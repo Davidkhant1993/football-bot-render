@@ -16,24 +16,25 @@ def run_flask():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
-# --- ဒီနေရာမှာ လူကြီးမင်း စိတ်ကြိုက် စာသားတွေ ပြောင်းနိုင်ပါတယ် ---
+# --- ဒီနေ့ပွဲစဉ်အတွက် အချက်အလက်များ (ဧပြီ ၂၇) ---
+# ဒီစာသားတွေကို GitHub မှာ အချိန်မရွေး ပြောင်းလို့ရပါတယ်
 MATCH_ANALYSIS = """
-📊 **ဒီနေ့ပွဲစဉ် သုံးသပ်ချက် (၂၇ ဧပြီ)**
+📊 **ဒီနေ့ပွဲစဉ် သုံးသပ်ချက် (ဧပြီ ၂၇)**
 
-⚽ **Arsenal vs Chelsea**
-အာဆင်နယ်က အိမ်ကွင်းမှာ ခြေစွမ်းပြနေပြီး ချဲလ်ဆီးကတော့ ရုန်းကန်နေရပါတယ်။
-- ခန့်မှန်းချက်- အာဆင်နယ် အနိုင် (သို့မဟုတ်) ၂ ဂိုးပြတ်။
-- အမှတ်ပေးဇယား- အာဆင်နယ်အတွက် အမှတ်က အရမ်းအရေးကြီးပါတယ်။
+🇮🇹 **Lazio vs Verona** (၁:၁၅ AM)
+လာဇီယိုက အိမ်ကွင်းမှာ အမှတ်လိုအပ်နေသလို ခြေစွမ်းလည်း ပိုသာပါတယ်။
+- ခန့်မှန်းချက်- လာဇီယို အနိုင်။
 
-(မှတ်ချက်- ဒါဟာ နမူနာ သုံးသပ်ချက်သာ ဖြစ်ပါတယ်။)
+🇪🇸 **Atletico Madrid vs Bilbao** (၁:၃၀ AM)
+ချန်ပီယံလိဂ်ဝင်ခွင့်အတွက် နှစ်သင်းလုံး အသေအလဲ ကစားမယ့်ပွဲပါ။
+- ခန့်မှန်းချက်- ဂိုးနည်း သရေ (သို့မဟုတ်) အက်သလက်တီကို ကပ်နိုင်။
 """
 
 MATCH_LINEUP = """
-📋 **ပွဲထွက်လူစာရင်း (Line-up Update)**
+📋 **ပွဲထွက်လူစာရင်း Update**
 
-⚽ **Arsenal XI:** Raya; White, Saliba, Gabriel, Tomiyasu; Rice, Partey, Odegaard; Saka, Havertz, Trossard.
-
-⚽ **Chelsea XI:** Petrovic; Gilchrist, Disasi, Badiashile, Cucurella; Caicedo, Enzo; Madueke, Gallagher, Mudryk; Jackson.
+Lazio နှင့် Atletico Madrid တို့၏ လူစာရင်းများသည် ပွဲမစမီ နာရီဝက်အလိုတွင် တရားဝင်ထွက်ပေါ်လာပါမည်။
+(Update ဖြစ်သည်နှင့် ဤနေရာတွင် တင်ပေးပါမည်။)
 """
 
 # --- BOT FUNCTIONS ---
@@ -45,7 +46,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "⚽ **Football Agent Expert** မှ ကြိုဆိုပါတယ်။\nသင့်အတွက် အကောင်းဆုံး သုံးသပ်ချက်နဲ့ လင့်ခ်များ အသင့်ရှိနေပါပြီ။",
+        "⚽ **Football Agent Expert** မှ ကြိုဆိုပါတယ်။\nဒီနေ့ရဲ့ အကောင်းဆုံး သုံးသပ်ချက်နဲ့ လင့်ခ်များ အသင့်ရှိနေပါပြီ။",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
@@ -61,13 +62,14 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text=MATCH_LINEUP, parse_mode='Markdown')
 
     elif query.data == 'links':
+        # ကြည့်လို့ရနိုင်ခြေအရှိဆုံး လင့်ခ်အသစ်များ
         link_keyboard = [
-            [InlineKeyboardButton("📱 ဖုန်းဖြင့်ကြည့်ရန် (Link 1)", url="https://koora4live.to/")],
-            [InlineKeyboardButton("💻 PC ဖြင့်ကြည့်ရန် (Link 2)", url="https://yalla-shoot.io/")],
-            [InlineKeyboardButton("📺 Backup Link (Link 3)", url="https://www.totalsportek.to/")]
+            [InlineKeyboardButton("📺 Link 1 (Yalla-Shoot)", url="https://yallashoot.video/")],
+            [InlineKeyboardButton("📺 Link 2 (Live Soccer)", url="https://www.livesoccertv.com/")],
+            [InlineKeyboardButton("📺 Link 3 (Yalla-Live)", url="https://yalla-live.tv/")]
         ]
         reply_markup = InlineKeyboardMarkup(link_keyboard)
-        await query.edit_message_text(text="🔗 **ကြည့်ရှုရန် လင့်ခ်များ**\nပွဲချိန်တွင် အောက်ပါလင့်ခ်များကို နှိပ်၍ ကြည့်ရှုနိုင်ပါသည်-", reply_markup=reply_markup, parse_mode='Markdown')
+        await query.edit_message_text(text="🔗 **ကြည့်ရှုရန် လင့်ခ်များ**\nLink တစ်ခု မရပါက နောက်တစ်ခု ပြောင်းကြည့်ပါ-", reply_markup=reply_markup, parse_mode='Markdown')
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
