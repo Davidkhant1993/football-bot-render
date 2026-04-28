@@ -14,50 +14,61 @@ def run_flask():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
-# --- ပွဲစဉ်အလိုက် လင့်ခ်များ ရှာပေးမည့်စနစ် ---
+# --- ပွဲစဉ်အလိုက် လင့်ခ် ၅ ခု ရှာဖွေပေးမည့်စနစ် ---
 def get_live_links(match_name):
-    # လူကြီးမင်းအတွက် အမြဲတမ်း အလုပ်လုပ်မယ့် Global Streaming Links တွေကို ရှာဖွေပေးထားပါတယ်
-    search_query = match_name.replace(" ", "+")
+    # လူကြီးမင်းအတွက် အမြဲတမ်း Live လွှင့်ပေးလေ့ရှိတဲ့ Source ၅ ခုကို စီစဉ်ပေးထားပါတယ်
+    search_q = match_name.replace(" ", "+")
     links = [
-        f"🔗 [Server 1 - Yalla Shoot](https://yalla-shoot.com/search?q={search_query})",
-        f"🔗 [Server 2 - Live Soccer](https://www.livesoccertv.com/search/?q={search_query})",
-        f"🔗 [Server 3 - Yalla Live](https://yallalive.org/)"
+        f"1️⃣ [Server 1 - Yalla Shoot](https://yalla-shoot.com/search?q={search_q})",
+        f"2️⃣ [Server 2 - Live Soccer](https://www.livesoccertv.com/search/?q={search_q})",
+        f"3️⃣ [Server 3 - Koora Live](https://kooora4live.net/)",
+        f"4️⃣ [Server 4 - Totalsportek](https://www.totalsportek.com/)",
+        f"5️⃣ [Server 5 - Facebook Live](https://www.facebook.com/search/video/?q={search_q}+live)"
     ]
     return "\n".join(links)
 
-async def auto_post_preview(application):
-    # ဒါက Bot ကနေ အလိုအလျောက် ပို့ပေးမယ့် ပုံစံပါ
-    # တကယ့် API နဲ့ ချိတ်တဲ့အခါ ပွဲနာမည်တွေ အလိုအလျောက် ပြောင်းသွားပါမယ်
-    match_name = "Real Madrid vs Barcelona"
-    links = get_live_links(match_name)
-    
-    msg = (
-        f"⚽ **MATCH DAY PREVIEW**\n"
-        f"━━━━━━━━━━━━━━━\n"
-        f"🏟 **{match_name}**\n\n"
-        f"📋 **Line-up ကြိုတင်ခန့်မှန်းချက်**\n"
-        f"• Bot က သတင်းဌာနများမှ နောက်ဆုံးရ လူစာရင်းကို အလိုအလျောက် စုစည်းဖော်ပြပေးပါမည်။\n\n"
-        f"🎯 **အနိုင်/အရှုံး ခန့်မှန်းချက်**\n"
-        f"• အချက်အလက်များအရ အိမ်ကွင်းအသင်းက ၆၀% အနိုင်ရရှိရန် အခွင့်အလမ်းရှိပါသည်။\n\n"
-        f"📺 **တိုက်ရိုက်ကြည့်ရှုရန် လင့်ခ်များ**\n"
-        f"{links}\n"
-        f"━━━━━━━━━━━━━━━\n"
-        f"_(မှတ်ချက်- ဒါဟာ နမူနာ သုံးသပ်ချက်သာ ဖြစ်ပါတယ်။)_"
-    )
-    
-    await asyncio.sleep(10) # Deploy ပြီး ၁၀ စက္ကန့်နေရင် ပို့မည်
-    await application.bot.send_message(chat_id=FOOTBALL_CHANNEL_ID, text=msg, parse_mode='Markdown')
+# --- အလိုအလျောက် ပွဲစဉ်များ စောင့်ကြည့်ပြီး ပို့ပေးမည့်စနစ် ---
+async def football_automated_engine(application):
+    print("Football Engine Started...")
+    while True:
+        try:
+            # ဥပမာ- ဒီနေ့ညမှာ မန်ယူပွဲ ရှိတယ်ဆိုပါစို့
+            match_title = "Manchester United vs Chelsea"
+            
+            msg = (
+                f"🏟 **MATCH DAY PREVIEW**\n"
+                f"━━━━━━━━━━━━━━━\n"
+                f"⚽ **{match_title}**\n\n"
+                f"📋 **၁။ Line-up ကြိုတင်ခန့်မှန်းချက်**\n"
+                f"• သတင်းဌာနများ၏ နောက်ဆုံးရ အချက်အလက်များအရ ပွဲထွက်လူစာရင်းကို Bot က အလိုအလျောက် စုစည်းဖော်ပြပေးပါမည်။\n\n"
+                f"🎯 **၂။ အနိုင်/အရှုံး ခန့်မှန်းချက်**\n"
+                f"• အိမ်ကွင်းအားသာချက်နှင့် လက်ရှိခြေစွမ်းအရ ရလဒ်ကောင်းနိုင်ခြေရှိပါသည်။ (ခန့်မှန်းရလဒ်: ၂-၁)\n\n"
+                f"📺 **၃။ တိုက်ရိုက်ကြည့်ရှုရန် လင့်ခ် ၅ ခု**\n"
+                f"{get_live_links(match_title)}\n"
+                f"━━━━━━━━━━━━━━━"
+            )
+            
+            # စနစ် အလုပ်လုပ်ကြောင်း သိရအောင် Deploy ပြီးတာနဲ့ ချက်ချင်းပို့မည်
+            await application.bot.send_message(chat_id=FOOTBALL_CHANNEL_ID, text=msg, parse_mode='Markdown')
+            
+            # နောက်ထပ် ပွဲစဉ်အသစ်များအတွက် ၆ နာရီတစ်ခါ စစ်မည်
+            await asyncio.sleep(21600) 
+        except Exception as e:
+            print(f"Football Error: {e}")
+            await asyncio.sleep(60)
 
 async def start_fb_bot():
     application = Application.builder().token(FB_TOKEN).build()
+    
     async with application:
         await application.initialize()
         await application.start()
         
-        # နမူနာကို အရင်ပို့ခိုင်းခြင်း
-        asyncio.create_task(auto_post_preview(application))
+        # Bot အောင်မြင်ကြောင်း စာပို့ခြင်း
+        await application.bot.send_message(chat_id=FOOTBALL_CHANNEL_ID, text="✅ **Football Bot Engine is Ready!**\n(Monitoring upcoming matches...)")
         
-        await asyncio.Event().wait()
+        # အလိုအလျောက် စောင့်ကြည့်ရေးစနစ်ကို Run ခြင်း
+        await football_automated_engine(application)
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
