@@ -274,8 +274,6 @@ def get_upcoming_matches(league_id):
     data = api_get(
         "fixtures",
         {
-            "league": league_id,
-            "season": 2025,
             "next": 5,
         },
     )
