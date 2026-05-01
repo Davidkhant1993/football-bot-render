@@ -280,8 +280,7 @@ def get_upcoming_matches(league_id):
         {
             "league": league_id,
             "season": 2024,
-            "status": "NS",
-            "next": 5,
+            "date": "2024-05-01",
         },
     )
 
