@@ -345,6 +345,7 @@ def send_posts():
 # RUN
 # =========================================================
 if SEND_ON_START:
+    send_message("✅ Bot test post is working")
     send_posts()
 
 schedule.every().day.at(DAILY_POST_TIME).do(send_posts)
