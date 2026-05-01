@@ -79,7 +79,7 @@ def api_get(endpoint, params=None):
             url,
             headers=HEADERS,
             params=params or {},
-            timeout=25
+            timeout=60
         )
 
         print(f"API {endpoint}: {response.status_code}", flush=True)
