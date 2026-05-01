@@ -92,10 +92,10 @@ def api_get(endpoint, params=None):
 
         response.raise_for_status()
 
-data = response.json()
-print("API ERRORS:", data.get("errors"), flush=True)
+        data = response.json()
+        print("API ERRORS:", data.get("errors"), flush=True)
 
-return data
+        return data
 
     except Exception as e:
         print(f"API Error: {endpoint} | {e}", flush=True)
