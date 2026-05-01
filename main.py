@@ -1,12 +1,10 @@
 import time
-import requests
-import schedule
 import asyncio
 import threading
+import requests
+import schedule
 
 from flask import Flask
-from datetime import datetime
-from zoneinfo import ZoneInfo
 from telegram import Bot
 
 
@@ -28,265 +26,71 @@ threading.Thread(target=run_web).start()
 
 
 # =========================================================
-# EDIT ONLY THESE 3 VALUES
+# EDIT ONLY THESE 2 VALUES
 # =========================================================
 BOT_TOKEN = "8498955364:AAHlm0z49sMNxcQUqIaMOnM9evizJUMnl8A"
 CHANNEL_ID = "@Manchesterunitedfanbased"
-API_KEY = "9c873019087d841beb710deb010914b8"
 
 
 # =========================================================
-# BASIC SETTINGS
+# SETTINGS
 # =========================================================
-TIMEZONE = "Asia/Bangkok"
-SEASON = 2024
-
-MATCH_LIMIT_PER_LEAGUE = 2
-FORM_MATCH_COUNT = 5
-H2H_MATCH_COUNT = 5
-
-DAILY_POST_TIME = "10:00"
 SEND_ON_START = True
+DAILY_POST_TIME = "10:00"
 
 
 # =========================================================
-# LEAGUES
-# =========================================================
-LEAGUES = {
-    "🏴 Premier League": 39,
-    "🇪🇸 LaLiga": 140,
-    "🇩🇪 Bundesliga": 78,
-    "🇮🇹 Serie A": 135,
-    "🇫🇷 Ligue 1": 61,
-    "🇪🇺 Champions League": 2,
-}
-
-
-# =========================================================
-# TELEGRAM + API SETUP
+# TELEGRAM SETUP
 # =========================================================
 bot = Bot(token=BOT_TOKEN)
 
-HEADERS = {
-    "x-apisports-key": API_KEY,
-}
-
-BASE_URL = "https://v3.football.api-sports.io"
-
 
 # =========================================================
-# API REQUEST
+# FREE FOOTBALL DATA SOURCE
 # =========================================================
-def api_get(endpoint, params=None):
-    url = f"{BASE_URL}/{endpoint}"
-
+def get_matches():
     try:
-        response = requests.get(
-            url,
-            headers=HEADERS,
-            params=params or {},
-            timeout=25
-        )
-
-        print(f"API {endpoint}: {response.status_code}", flush=True)
-
-        response.raise_for_status()
-
+        url = "https://www.scorebat.com/video-api/v3/"
+        response = requests.get(url, timeout=20)
         data = response.json()
-        print("API ERRORS:", data.get("errors"), flush=True)
 
-        return data
+        matches = data.get("response", [])
+
+        return matches[:5]
 
     except Exception as e:
-        print(f"API Error: {endpoint} | {e}", flush=True)
-        return {"response": []}
-
-
-def format_match_time(date_text):
-    try:
-        dt = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
-        local_dt = dt.astimezone(ZoneInfo(TIMEZONE))
-        return local_dt.strftime("%d %b %Y | %I:%M %p")
-    except Exception:
-        return date_text
-
-
-def result_icon(team_id, fixture_item):
-    goals_home = fixture_item["goals"]["home"]
-    goals_away = fixture_item["goals"]["away"]
-
-    if goals_home is None or goals_away is None:
-        return "➖"
-
-    home_id = fixture_item["teams"]["home"]["id"]
-    away_id = fixture_item["teams"]["away"]["id"]
-
-    if goals_home == goals_away:
-        return "➖"
-
-    home_win = goals_home > goals_away
-
-    if team_id == home_id:
-        return "✅" if home_win else "❌"
-
-    if team_id == away_id:
-        return "❌" if home_win else "✅"
-
-    return "➖"
-
-
-def team_form(team_id, league_id):
-    data = api_get(
-        "fixtures",
-        {
-            "team": team_id,
-            "league": league_id,
-            "season": SEASON,
-            "last": FORM_MATCH_COUNT,
-        },
-    )
-
-    fixtures = data.get("response", [])
-
-    if not fixtures:
-        return "No form data"
-
-    return "".join([result_icon(team_id, item) for item in fixtures])
-
-
-def h2h_summary(home_id, away_id):
-    data = api_get(
-        "fixtures/headtohead",
-        {
-            "h2h": f"{home_id}-{away_id}",
-            "last": H2H_MATCH_COUNT,
-        },
-    )
-
-    fixtures = data.get("response", [])
-
-    if not fixtures:
-        return "No H2H data"
-
-    home_wins = 0
-    away_wins = 0
-    draws = 0
-
-    for item in fixtures:
-        goals_home = item["goals"]["home"]
-        goals_away = item["goals"]["away"]
-
-        if goals_home is None or goals_away is None:
-            continue
-
-        item_home_id = item["teams"]["home"]["id"]
-        item_away_id = item["teams"]["away"]["id"]
-
-        if goals_home == goals_away:
-            draws += 1
-        elif goals_home > goals_away:
-            if item_home_id == home_id:
-                home_wins += 1
-            else:
-                away_wins += 1
-        else:
-            if item_away_id == home_id:
-                home_wins += 1
-            else:
-                away_wins += 1
-
-    return f"{home_wins}W - {draws}D - {away_wins}W"
-
-
-def get_injuries(team_id):
-    data = api_get(
-        "injuries",
-        {
-            "team": team_id,
-            "season": SEASON,
-        },
-    )
-
-    injuries = data.get("response", [])
-
-    if not injuries:
+        print(f"Get matches error: {e}", flush=True)
         return []
 
-    players = []
 
-    for item in injuries[:3]:
-        player = item.get("player", {}).get("name", "Unknown")
-        players.append(player)
+# =========================================================
+# BUILD POST
+# =========================================================
+def build_post(match):
+    title = match.get("title", "Football Match")
+    competition = match.get("competition", "Unknown League")
+    date = match.get("date", "Unknown Time")
 
-    return players
+    post = ""
+    post += "⚽ MATCH UPDATE\n"
+    post += "━━━━━━━━━━━━━━\n\n"
 
+    post += f"🔥 {title}\n\n"
+    post += f"🏆 {competition}\n"
+    post += f"🕒 {date}\n\n"
 
-def build_match_preview(match, league_name):
-    fixture = match["fixture"]
-    teams = match["teams"]
+    post += "📺 Match Highlights Available\n"
+    post += "📊 Live football updates\n"
+    post += "🚀 Powered by Football Bot\n\n"
 
-    home = teams["home"]
-    away = teams["away"]
+    post += "#Football #LiveFootball"
 
-    home_id = home["id"]
-    away_id = away["id"]
-
-    home_name = home["name"]
-    away_name = away["name"]
-
-    match_time = format_match_time(fixture["date"])
-
-    home_form = team_form(home_id, match["league"]["id"])
-    away_form = team_form(away_id, match["league"]["id"])
-
-    h2h = h2h_summary(home_id, away_id)
-
-    home_injuries = get_injuries(home_id)
-    away_injuries = get_injuries(away_id)
-
-    text = ""
-    text += f"🔥 {home_name} vs {away_name}\n"
-    text += "━━━━━━━━━━━━━━\n"
-    text += f"🏆 {league_name}\n"
-    text += f"🕒 {match_time}\n\n"
-
-    text += "📊 Recent Form\n"
-    text += f"{home_name}: {home_form}\n"
-    text += f"{away_name}: {away_form}\n\n"
-
-    text += "📈 H2H\n"
-    text += f"{h2h}\n\n"
-
-    text += "🚑 Injuries\n"
-
-    if home_injuries:
-        text += f"{home_name}: {', '.join(home_injuries)}\n"
-    else:
-        text += f"{home_name}: No major injuries\n"
-
-    if away_injuries:
-        text += f"{away_name}: {', '.join(away_injuries)}\n"
-    else:
-        text += f"{away_name}: No major injuries\n"
-
-    text += "\n#Football #MatchPreview"
-
-    return text
+    return post
 
 
-def get_upcoming_matches(league_id):
-    data = api_get(
-        "fixtures",
-        {
-            "league": league_id,
-            "season": 2024,
-            "date": "2024-05-01",
-        },
-    )
-
-    return data.get("response", [])
-
-
+# =========================================================
+# SEND MESSAGE
+# =========================================================
 def send_message(text):
     asyncio.run(
         bot.send_message(
@@ -296,27 +100,32 @@ def send_message(text):
     )
 
 
+# =========================================================
+# SEND POSTS
+# =========================================================
 def send_posts():
     print("Building football posts...", flush=True)
 
-    for league_name, league_id in LEAGUES.items():
-        matches = get_upcoming_matches(league_id)
+    matches = get_matches()
 
-        print(f"{league_name}: {len(matches)} matches found", flush=True)
+    print(f"Matches found: {len(matches)}", flush=True)
 
-        if not matches:
-            continue
+    if not matches:
+        send_message("❌ No matches found")
+        return
 
-        for match in matches:
-            try:
-                text = build_match_preview(match, league_name)
-                send_message(text)
+    for match in matches:
+        try:
+            text = build_post(match)
 
-                print("Post sent", flush=True)
-                time.sleep(2)
+            send_message(text)
 
-            except Exception as e:
-                print(f"Error: {e}", flush=True)
+            print("Post sent", flush=True)
+
+            time.sleep(2)
+
+        except Exception as e:
+            print(f"Send post error: {e}", flush=True)
 
     print("Done", flush=True)
 
