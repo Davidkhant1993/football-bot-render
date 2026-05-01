@@ -321,6 +321,7 @@ def send_posts():
 
     for league_name, league_id in LEAGUES.items():
         matches = get_upcoming_matches(league_id)
+        print(f"{league_name}: {len(matches)} matches found")
 
         if not matches:
             continue
