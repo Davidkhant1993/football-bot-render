@@ -72,35 +72,29 @@ def get_matches():
     try:
         url = "https://www.scorebat.com/video-api/v3/"
 
-        response = requests.get(
-            url,
-            timeout=30
-        )
-
+        response = requests.get(url, timeout=30)
         response.raise_for_status()
 
         data = response.json()
-
         matches = data.get("response", [])
 
         final_matches = []
 
         for match in matches:
+            title = match.get("title", "Football Match")
+            competition = match.get("competition", "Football")
+            date = match.get("date", datetime.now().isoformat())
 
-            title = match.get(
-                "title",
-                "Football Match"
-            )
+            try:
+                match_time = datetime.fromisoformat(
+                    date.replace("Z", "+00:00")
+                )
+                now = datetime.now(match_time.tzinfo)
 
-            competition = match.get(
-                "competition",
-                "Football"
-            )
-
-            date = match.get(
-                "date",
-                datetime.now().isoformat()
-            )
+                if match_time < now:
+                    continue
+            except:
+                continue
 
             final_matches.append({
                 "title": title,
@@ -108,14 +102,10 @@ def get_matches():
                 "date": date
             })
 
-        return final_matches[:5]
+        return final_matches[:MATCH_LIMIT]
 
     except Exception as e:
-        print(
-            f"Get matches error: {e}",
-            flush=True
-        )
-
+        print(f"Get matches error: {e}", flush=True)
         return []
 
 
