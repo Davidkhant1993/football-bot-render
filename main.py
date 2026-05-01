@@ -11,11 +11,11 @@ from telegram import Bot
 
 
 # =========================================================
-# FLASK WEB SERVER FOR RENDER FREE PLAN
+# RENDER FREE WEB SERVER
 # =========================================================
 app = Flask(__name__)
 
-@app.route('/')
+@app.route("/")
 def home():
     return "Football Bot Running"
 
@@ -28,7 +28,7 @@ threading.Thread(target=run_web).start()
 
 
 # =========================================================
-# EDIT THESE 3 VALUES
+# EDIT ONLY THESE 3 VALUES
 # =========================================================
 BOT_TOKEN = "8498955364:AAHlm0z49sMNxcQUqIaMOnM9evizJUMnl8A"
 CHANNEL_ID = "@Manchesterunitedfanbased"
@@ -56,18 +56,19 @@ LEAGUES = {
     "🏴 Premier League": 39,
     "🇪🇸 LaLiga": 140,
     "🇩🇪 Bundesliga": 78,
+    "🇮🇹 Serie A": 135,
+    "🇫🇷 Ligue 1": 61,
     "🇪🇺 Champions League": 2,
 }
 
 
 # =========================================================
-# TELEGRAM + API
+# TELEGRAM + API SETUP
 # =========================================================
 bot = Bot(token=BOT_TOKEN)
 
 HEADERS = {
-    "x-rapidapi-key": API_KEY,
-    "x-rapidapi-host": "v3.football.api-sports.io",
+    "x-apisports-key": API_KEY,
 }
 
 BASE_URL = "https://v3.football.api-sports.io"
@@ -87,31 +88,25 @@ def api_get(endpoint, params=None):
             timeout=25
         )
 
+        print(f"API {endpoint}: {response.status_code}", flush=True)
+
         response.raise_for_status()
         return response.json()
 
     except Exception as e:
-        print(f"API Error: {endpoint} | {e}")
+        print(f"API Error: {endpoint} | {e}", flush=True)
         return {"response": []}
 
 
-# =========================================================
-# TIME FORMAT
-# =========================================================
 def format_match_time(date_text):
     try:
         dt = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
         local_dt = dt.astimezone(ZoneInfo(TIMEZONE))
-
         return local_dt.strftime("%d %b %Y | %I:%M %p")
-
     except Exception:
         return date_text
 
 
-# =========================================================
-# TEAM FORM
-# =========================================================
 def result_icon(team_id, fixture_item):
     goals_home = fixture_item["goals"]["home"]
     goals_away = fixture_item["goals"]["away"]
@@ -152,14 +147,9 @@ def team_form(team_id, league_id):
     if not fixtures:
         return "No form data"
 
-    icons = [result_icon(team_id, item) for item in fixtures]
-
-    return "".join(icons)
+    return "".join([result_icon(team_id, item) for item in fixtures])
 
 
-# =========================================================
-# H2H
-# =========================================================
 def h2h_summary(home_id, away_id):
     data = api_get(
         "fixtures/headtohead",
@@ -190,13 +180,11 @@ def h2h_summary(home_id, away_id):
 
         if goals_home == goals_away:
             draws += 1
-
         elif goals_home > goals_away:
             if item_home_id == home_id:
                 home_wins += 1
             else:
                 away_wins += 1
-
         else:
             if item_away_id == home_id:
                 home_wins += 1
@@ -206,9 +194,6 @@ def h2h_summary(home_id, away_id):
     return f"{home_wins}W - {draws}D - {away_wins}W"
 
 
-# =========================================================
-# INJURY
-# =========================================================
 def get_injuries(team_id):
     data = api_get(
         "injuries",
@@ -232,9 +217,6 @@ def get_injuries(team_id):
     return players
 
 
-# =========================================================
-# BUILD PREVIEW
-# =========================================================
 def build_match_preview(match, league_name):
     fixture = match["fixture"]
     teams = match["teams"]
@@ -288,9 +270,6 @@ def build_match_preview(match, league_name):
     return text
 
 
-# =========================================================
-# UPCOMING FIXTURES
-# =========================================================
 def get_upcoming_matches(league_id):
     data = api_get(
         "fixtures",
@@ -304,9 +283,6 @@ def get_upcoming_matches(league_id):
     return data.get("response", [])
 
 
-# =========================================================
-# SEND TELEGRAM
-# =========================================================
 def send_message(text):
     asyncio.run(
         bot.send_message(
@@ -317,11 +293,12 @@ def send_message(text):
 
 
 def send_posts():
-    print("Building football posts...")
+    print("Building football posts...", flush=True)
 
     for league_name, league_id in LEAGUES.items():
         matches = get_upcoming_matches(league_id)
-        print(f"{league_name}: {len(matches)} matches found")
+
+        print(f"{league_name}: {len(matches)} matches found", flush=True)
 
         if not matches:
             continue
@@ -329,17 +306,15 @@ def send_posts():
         for match in matches:
             try:
                 text = build_match_preview(match, league_name)
-
                 send_message(text)
 
-                print("Post sent")
-
+                print("Post sent", flush=True)
                 time.sleep(2)
 
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"Error: {e}", flush=True)
 
-    print("Done")
+    print("Done", flush=True)
 
 
 # =========================================================
@@ -351,8 +326,7 @@ if SEND_ON_START:
 
 schedule.every().day.at(DAILY_POST_TIME).do(send_posts)
 
-print("Football Bot Running...")
-
+print("Football Bot Running...", flush=True)
 
 while True:
     schedule.run_pending()
