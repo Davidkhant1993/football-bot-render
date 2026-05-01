@@ -91,7 +91,11 @@ def api_get(endpoint, params=None):
         print(f"API {endpoint}: {response.status_code}", flush=True)
 
         response.raise_for_status()
-        return response.json()
+
+data = response.json()
+print("API ERRORS:", data.get("errors"), flush=True)
+
+return data
 
     except Exception as e:
         print(f"API Error: {endpoint} | {e}", flush=True)
