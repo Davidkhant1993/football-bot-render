@@ -8,9 +8,6 @@ from flask import Flask
 from telegram import Bot
 
 
-# =========================================================
-# RENDER WEB SERVER
-# =========================================================
 app = Flask(__name__)
 
 @app.route("/")
@@ -25,76 +22,39 @@ def run_web():
 threading.Thread(target=run_web).start()
 
 
-# =========================================================
-# EDIT ONLY THESE 2 VALUES
-# =========================================================
-BOT_TOKEN = "8498955364:AAHlm0z49sMNxcQUqIaMOnM9evizJUMnl8A"
+BOT_TOKEN = "AAHlm0z49sMNxcQUqIaMOnM9evizJUMnl8A"
 CHANNEL_ID = "@Manchesterunitedfanbased"
 
-
-# =========================================================
-# SETTINGS
-# =========================================================
 SEND_ON_START = True
 DAILY_POST_TIME = "10:00"
 MATCH_LIMIT = 5
 
-
-# =========================================================
-# TELEGRAM BOT
-# =========================================================
 bot = Bot(token=BOT_TOKEN)
 
 
-# =========================================================
-# TIME FORMAT
-# =========================================================
 def format_time(date_str):
     try:
-        dt = datetime.fromisoformat(
-            date_str.replace("Z", "+00:00")
-        )
-
+        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         mm_time = dt + timedelta(hours=6, minutes=30)
-
-        return mm_time.strftime(
-            "%d %b %Y | %I:%M %p (MM Time)"
-        )
-
+        return mm_time.strftime("%d %b %Y | %I:%M %p (MM Time)")
     except:
         return date_str
 
 
-# =========================================================
-# FREE DATA SOURCE - SCOREBAT
-# =========================================================
 def get_matches():
     try:
         url = "https://www.scorebat.com/video-api/v3/"
-
         response = requests.get(url, timeout=30)
         response.raise_for_status()
-
         data = response.json()
-        matches = data.get("response", [])
 
+        matches = data.get("response", [])
         final_matches = []
 
         for match in matches:
             title = match.get("title", "Football Match")
             competition = match.get("competition", "Football")
             date = match.get("date", datetime.now().isoformat())
-
-            try:
-                match_time = datetime.fromisoformat(
-                    date.replace("Z", "+00:00")
-                )
-                now = datetime.now(match_time.tzinfo)
-
-                if match_time < now:
-                    continue
-            except:
-                continue
 
             final_matches.append({
                 "title": title,
@@ -109,58 +69,127 @@ def get_matches():
         return []
 
 
-# =========================================================
-# CLEAN COMPETITION
-# =========================================================
 def clean_competition(comp):
     if isinstance(comp, dict):
         return comp.get("name", "Football")
-
     return str(comp)
 
 
-# =========================================================
-# SIMPLE ANALYSIS
-# =========================================================
 def build_analysis(title):
     title_lower = title.lower()
 
-    if (
-        "manchester united" in title_lower
-        or "man united" in title_lower
-    ):
-        return (
-            "Man United ဘက်က attacking transition "
-            "နဲ့ wing play ကိုအဓိကအားထားနိုင်ပြီး "
-            "defensive concentration က အရေးကြီးနိုင်ပါတယ်။"
+    if "manchester united" in title_lower or "man united" in title_lower:
+        return "Man United ဘက်က attacking transition နဲ့ wing play ကိုအဓိကအားထားနိုင်ပြီး defensive concentration က အရေးကြီးနိုင်ပါတယ်။"
+
+    if "real madrid" in title_lower or "barcelona" in title_lower:
+        return "Big match pressure ကြောင့် midfield control နဲ့ counter attack timing က result ကိုဆုံးဖြတ်နိုင်ပါတယ်။"
+
+    if "arsenal" in title_lower or "liverpool" in title_lower:
+        return "High pressing နှစ်သင်းဖြစ်နိုင်ပြီး tempo မြန်တဲ့ open game ဖြစ်နိုင်ပါတယ်။"
+
+    return "နှစ်သင်းလုံးအတွက် momentum အရေးကြီးပြီး first goal ရတဲ့ဘက်က game control ပိုရနိုင်ပါတယ်။"
+
+
+def build_tip(title):
+    title_lower = title.lower()
+
+    if "real madrid" in title_lower or "barcelona" in title_lower:
+        return "BTTS / Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။"
+
+    if "manchester united" in title_lower:
+        return "Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။"
+
+    return "Balanced match ဖြစ်နိုင်ပြီး Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။"
+
+
+def build_post(match):
+    title = match.get("title", "Football Match")
+    competition = clean_competition(match.get("competition", "Football"))
+    date = match.get("date", "Unknown Time")
+    formatted_time = format_time(date)
+
+    text = ""
+    text += "🔥 MATCH PREVIEW\n"
+    text += "━━━━━━━━━━━━━━\n"
+    text += f"⚽ {title}\n"
+    text += f"🏆 {competition}\n"
+    text += f"🕒 {formatted_time}\n\n"
+
+    text += "📊 Match Status\n"
+    text += "Upcoming / Recent Match\n\n"
+
+    text += "📈 Recent Performance\n"
+    text += "Free source မှာ detailed form data မပါသေးပါ\n\n"
+
+    text += "🚑 Injury Update\n"
+    text += "Official injury data မရသေးပါ\n\n"
+
+    text += "👥 Expected Lineup\n"
+    text += "Official lineup မထွက်သေးပါ / Free source မှာ lineup data မပါသေးပါ\n\n"
+
+    text += "🧠 Match Analysis\n"
+    text += build_analysis(title) + "\n\n"
+
+    text += "🎯 Prediction Tip\n"
+    text += build_tip(title) + "\n\n"
+
+    text += "⚠️ Note: Betting signal မဟုတ်ပါ။ Free football source အခြေခံပြီး preview ရေးထားတာပါ။\n\n"
+    text += "#Football #MatchPreview"
+
+    return text
+
+
+def send_message(text):
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        loop.run_until_complete(
+            bot.send_message(
+                chat_id=CHANNEL_ID,
+                text=text
+            )
         )
 
-    if (
-        "real madrid" in title_lower
-        or "barcelona" in title_lower
-    ):
-        return (
-            "Big match pressure ကြောင့် midfield "
-            "control နဲ့ counter attack timing "
-            "က result ကိုဆုံးဖြတ်နိုင်ပါတယ်။"
-        )
+        loop.close()
 
-    if (
-        "arsenal" in title_lower
-        or "liverpool" in title_lower
-    ):
-        return (
-            "High pressing နှစ်သင်းဖြစ်နိုင်ပြီး "
-            "tempo မြန်တဲ့ open game ဖြစ်နိုင်ပါတယ်။"
-        )
-
-    return (
-        "နှစ်သင်းလုံးအတွက် momentum အရေးကြီးပြီး "
-        "first goal ရတဲ့ဘက်က game control "
-        "ပိုရနိုင်ပါတယ်။"
-    )
+    except Exception as e:
+        print(f"Telegram send error: {e}", flush=True)
 
 
+def send_posts():
+    print("Building football posts...", flush=True)
+
+    matches = get_matches()
+    print(f"Matches found: {len(matches)}", flush=True)
+
+    if not matches:
+        send_message("⚠️ Match data မတွေ့သေးပါ။")
+        return
+
+    for match in matches:
+        try:
+            text = build_post(match)
+            send_message(text)
+            print("Post sent", flush=True)
+            time.sleep(2)
+
+        except Exception as e:
+            print(f"Send error: {e}", flush=True)
+
+    print("Done", flush=True)
+
+
+if SEND_ON_START:
+    send_posts()
+
+schedule.every().day.at(DAILY_POST_TIME).do(send_posts)
+
+print("Football Bot Running...", flush=True)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
 # =========================================================
 # PREDICTION TIP
 # =========================================================
