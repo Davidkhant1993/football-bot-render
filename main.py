@@ -3,7 +3,7 @@ import asyncio
 import threading
 import requests
 import schedule
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask
 from telegram import Bot
 
@@ -40,7 +40,29 @@ DAILY_POST_TIME = "10:00"
 MATCH_LIMIT = 5
 
 
+# =========================================================
+# TELEGRAM BOT
+# =========================================================
 bot = Bot(token=BOT_TOKEN)
+
+
+# =========================================================
+# TIME FORMAT
+# =========================================================
+def format_time(date_str):
+    try:
+        dt = datetime.fromisoformat(
+            date_str.replace("Z", "+00:00")
+        )
+
+        mm_time = dt + timedelta(hours=6, minutes=30)
+
+        return mm_time.strftime(
+            "%d %b %Y | %I:%M %p (MM Time)"
+        )
+
+    except:
+        return date_str
 
 
 # =========================================================
@@ -49,74 +71,177 @@ bot = Bot(token=BOT_TOKEN)
 def get_matches():
     try:
         url = "https://www.scorebat.com/video-api/v3/"
-        response = requests.get(url, timeout=30)
+
+        response = requests.get(
+            url,
+            timeout=30
+        )
+
         response.raise_for_status()
+
         data = response.json()
-        return data.get("response", [])[:MATCH_LIMIT]
+
+        matches = data.get("response", [])
+
+        filtered = []
+
+        now = datetime.utcnow()
+
+        for match in matches:
+            try:
+                match_time = datetime.fromisoformat(
+                    match["date"].replace("Z", "+00:00")
+                )
+
+                if match_time > now:
+                    filtered.append(match)
+
+            except:
+                continue
+
+        return filtered[:MATCH_LIMIT]
+
     except Exception as e:
         print(f"Get matches error: {e}", flush=True)
         return []
 
 
+# =========================================================
+# CLEAN COMPETITION
+# =========================================================
 def clean_competition(comp):
     if isinstance(comp, dict):
         return comp.get("name", "Football")
+
     return str(comp)
 
 
+# =========================================================
+# SIMPLE ANALYSIS
+# =========================================================
 def build_analysis(title):
     title_lower = title.lower()
 
-    if "manchester united" in title_lower or "man united" in title_lower:
-        return "Man United ဘက်က attacking transition နဲ့ wing play ကိုအဓိကအားထားနိုင်ပြီး defensive concentration က အရေးကြီးနိုင်ပါတယ်။"
+    if (
+        "manchester united" in title_lower
+        or "man united" in title_lower
+    ):
+        return (
+            "Man United ဘက်က attacking transition "
+            "နဲ့ wing play ကိုအဓိကအားထားနိုင်ပြီး "
+            "defensive concentration က အရေးကြီးနိုင်ပါတယ်။"
+        )
 
-    if "real madrid" in title_lower or "barcelona" in title_lower:
-        return "Big match pressure ကြောင့် midfield control နဲ့ counter attack timing က result ကိုဆုံးဖြတ်နိုင်ပါတယ်။"
+    if (
+        "real madrid" in title_lower
+        or "barcelona" in title_lower
+    ):
+        return (
+            "Big match pressure ကြောင့် midfield "
+            "control နဲ့ counter attack timing "
+            "က result ကိုဆုံးဖြတ်နိုင်ပါတယ်။"
+        )
 
-    if "arsenal" in title_lower or "liverpool" in title_lower:
-        return "High pressing နှစ်သင်းဖြစ်နိုင်ပြီး tempo မြန်တဲ့ open game ဖြစ်နိုင်ပါတယ်။"
+    if (
+        "arsenal" in title_lower
+        or "liverpool" in title_lower
+    ):
+        return (
+            "High pressing နှစ်သင်းဖြစ်နိုင်ပြီး "
+            "tempo မြန်တဲ့ open game ဖြစ်နိုင်ပါတယ်။"
+        )
 
-    return "နှစ်သင်းလုံးအတွက် momentum အရေးကြီးပြီး first goal ရတဲ့ဘက်က game control ပိုရနိုင်ပါတယ်။"
+    return (
+        "နှစ်သင်းလုံးအတွက် momentum အရေးကြီးပြီး "
+        "first goal ရတဲ့ဘက်က game control "
+        "ပိုရနိုင်ပါတယ်။"
+    )
 
 
+# =========================================================
+# PREDICTION TIP
+# =========================================================
 def build_tip(title):
     title_lower = title.lower()
 
-    if "real madrid" in title_lower or "barcelona" in title_lower:
-        return "BTTS / Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။"
+    if (
+        "real madrid" in title_lower
+        or "barcelona" in title_lower
+    ):
+        return (
+            "BTTS / Over 1.5 Goals angle "
+            "စဉ်းစားလို့ရပါတယ်။"
+        )
 
     if "manchester united" in title_lower:
-        return "Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။"
+        return (
+            "Over 1.5 Goals angle "
+            "စဉ်းစားလို့ရပါတယ်။"
+        )
 
-    return "Balanced match ဖြစ်နိုင်ပြီး Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။"
+    return (
+        "Balanced match ဖြစ်နိုင်ပြီး "
+        "Over 1.5 Goals angle "
+        "စဉ်းစားလို့ရပါတယ်။"
+    )
 
 
+# =========================================================
+# BUILD POST
+# =========================================================
 def build_post(match):
-    title = match.get("title", "Football Match")
-    competition = clean_competition(match.get("competition", "Football"))
-    date = match.get("date", "Unknown Time")
+    title = match.get(
+        "title",
+        "Football Match"
+    )
+
+    competition = clean_competition(
+        match.get("competition", "Football")
+    )
+
+    date = match.get(
+        "date",
+        "Unknown Time"
+    )
+
+    formatted_time = format_time(date)
 
     analysis = build_analysis(title)
+
     tip = build_tip(title)
 
     text = ""
+
     text += "🔥 MATCH PREVIEW\n"
     text += "━━━━━━━━━━━━━━\n"
+
     text += f"⚽ {title}\n"
+
     text += f"🏆 {competition}\n"
-    text += f"🕒 {date}\n\n"
+
+    text += f"🕒 {formatted_time}\n\n"
 
     text += "📊 Match Status\n"
-    text += "Upcoming / Recent football match data\n\n"
+    text += "Upcoming Match\n\n"
 
     text += "📈 Recent Performance\n"
-    text += "Free source မှာ detailed form data မပါသေးပါ\n\n"
+    text += (
+        "Free source မှာ detailed form "
+        "data မပါသေးပါ\n\n"
+    )
 
     text += "🚑 Injury Update\n"
-    text += "Official injury data မရသေးပါ\n\n"
+    text += (
+        "Official injury data "
+        "မရသေးပါ\n\n"
+    )
 
     text += "👥 Expected Lineup\n"
-    text += "Official lineup မထွက်သေးပါ / Free source မှာ lineup data မပါသေးပါ\n\n"
+    text += (
+        "Official lineup မထွက်သေးပါ "
+        "/ Free source မှာ lineup data "
+        "မပါသေးပါ\n\n"
+    )
 
     text += "🧠 Match Analysis\n"
     text += analysis + "\n\n"
@@ -124,13 +249,21 @@ def build_post(match):
     text += "🎯 Prediction Tip\n"
     text += tip + "\n\n"
 
-    text += "⚠️ Note: Betting signal မဟုတ်ပါ။ Free football source အခြေခံပြီး preview ရေးထားတာပါ။\n\n"
+    text += (
+        "⚠️ Note: Betting signal "
+        "မဟုတ်ပါ။ Free football source "
+        "အခြေခံပြီး preview "
+        "ရေးထားတာပါ။\n\n"
+    )
 
     text += "#Football #MatchPreview"
 
     return text
 
 
+# =========================================================
+# SEND TELEGRAM
+# =========================================================
 def send_message(text):
     asyncio.run(
         bot.send_message(
@@ -140,24 +273,48 @@ def send_message(text):
     )
 
 
+# =========================================================
+# SEND POSTS
+# =========================================================
 def send_posts():
-    print("Building football posts...", flush=True)
+    print(
+        "Building football posts...",
+        flush=True
+    )
 
     matches = get_matches()
-    print(f"Matches found: {len(matches)}", flush=True)
+
+    print(
+        f"Matches found: {len(matches)}",
+        flush=True
+    )
 
     if not matches:
-        send_message("⚠️ Match data မတွေ့သေးပါ။ နောက်တစ်ကြိမ် auto စစ်ပါမယ်။")
+        send_message(
+            "⚠️ Upcoming match data "
+            "မတွေ့သေးပါ။"
+        )
+
         return
 
     for match in matches:
         try:
             text = build_post(match)
+
             send_message(text)
-            print("Post sent", flush=True)
+
+            print(
+                "Post sent",
+                flush=True
+            )
+
             time.sleep(2)
+
         except Exception as e:
-            print(f"Send error: {e}", flush=True)
+            print(
+                f"Send error: {e}",
+                flush=True
+            )
 
     print("Done", flush=True)
 
@@ -168,9 +325,17 @@ def send_posts():
 if SEND_ON_START:
     send_posts()
 
-schedule.every().day.at(DAILY_POST_TIME).do(send_posts)
 
-print("Football Bot Running...", flush=True)
+schedule.every().day.at(
+    DAILY_POST_TIME
+).do(send_posts)
+
+
+print(
+    "Football Bot Running...",
+    flush=True
+)
+
 
 while True:
     schedule.run_pending()
