@@ -276,7 +276,7 @@ def get_upcoming_matches(league_id):
         {
             "league": league_id,
             "season": 2025,
-            "date": datetime.now().strftime("%Y-%m-%d"),
+            "next": 5,
         },
     )
 
