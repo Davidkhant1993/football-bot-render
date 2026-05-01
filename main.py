@@ -268,22 +268,24 @@ def build_post(match):
 # SEND TELEGRAM
 # =========================================================
 def send_message(text):
-    asyncio.run(
-        bot.send_message(
-            chat_id=CHANNEL_ID,
-            text=text
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        loop.run_until_complete(
+            bot.send_message(
+                chat_id=CHANNEL_ID,
+                text=text
+            )
         )
-    )
 
+        loop.close()
 
-# =========================================================
-# SEND POSTS
-# =========================================================
-def send_posts():
-    print(
-        "Building football posts...",
-        flush=True
-    )
+    except Exception as e:
+        print(
+            f"Telegram send error: {e}",
+            flush=True
+        )
 
     matches = get_matches()
 
