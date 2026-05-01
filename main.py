@@ -39,7 +39,7 @@ API_KEY = "9c873019087d841beb710deb010914b8"
 # BASIC SETTINGS
 # =========================================================
 TIMEZONE = "Asia/Bangkok"
-SEASON = 2026
+SEASON = 2025
 
 MATCH_LIMIT_PER_LEAGUE = 2
 FORM_MATCH_COUNT = 5
