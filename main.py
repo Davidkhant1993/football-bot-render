@@ -1,11 +1,9 @@
 import time
-import asyncio
 import threading
 import requests
 import schedule
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Flask
-from telegram import Bot
 
 
 app = Flask(__name__)
@@ -29,7 +27,17 @@ SEND_ON_START = True
 DAILY_POST_TIME = "10:00"
 MATCH_LIMIT = 5
 
-bot = Bot(token=BOT_TOKEN)
+
+def send_message(text):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    requests.post(
+        url,
+        data={
+            "chat_id": CHANNEL_ID,
+            "text": text
+        },
+        timeout=30
+    )
 
 
 def format_time(date_str):
@@ -50,11 +58,20 @@ def get_matches():
 
         matches = data.get("response", [])
         final_matches = []
+        now = datetime.now(timezone.utc)
 
         for match in matches:
             title = match.get("title", "Football Match")
             competition = match.get("competition", "Football")
-            date = match.get("date", datetime.now().isoformat())
+            date = match.get("date", "")
+
+            try:
+                match_time = datetime.fromisoformat(date.replace("Z", "+00:00"))
+            except:
+                continue
+
+            if match_time <= now:
+                continue
 
             final_matches.append({
                 "title": title,
@@ -75,107 +92,53 @@ def clean_competition(comp):
     return str(comp)
 
 
-def build_analysis(title):
-    title_lower = title.lower()
-
-    if "manchester united" in title_lower or "man united" in title_lower:
-        return "Man United ဘက်က attacking transition နဲ့ wing play ကိုအဓိကအားထားနိုင်ပြီး defensive concentration က အရေးကြီးနိုင်ပါတယ်။"
-
-    if "real madrid" in title_lower or "barcelona" in title_lower:
-        return "Big match pressure ကြောင့် midfield control နဲ့ counter attack timing က result ကိုဆုံးဖြတ်နိုင်ပါတယ်။"
-
-    if "arsenal" in title_lower or "liverpool" in title_lower:
-        return "High pressing နှစ်သင်းဖြစ်နိုင်ပြီး tempo မြန်တဲ့ open game ဖြစ်နိုင်ပါတယ်။"
-
-    return "နှစ်သင်းလုံးအတွက် momentum အရေးကြီးပြီး first goal ရတဲ့ဘက်က game control ပိုရနိုင်ပါတယ်။"
-
-
-def build_tip(title):
-    title_lower = title.lower()
-
-    if "real madrid" in title_lower or "barcelona" in title_lower:
-        return "BTTS / Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။"
-
-    if "manchester united" in title_lower:
-        return "Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။"
-
-    return "Balanced match ဖြစ်နိုင်ပြီး Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။"
-
-
 def build_post(match):
     title = match.get("title", "Football Match")
     competition = clean_competition(match.get("competition", "Football"))
-    date = match.get("date", "Unknown Time")
-    formatted_time = format_time(date)
+    date = format_time(match.get("date", "Unknown Time"))
 
     text = ""
     text += "🔥 MATCH PREVIEW\n"
     text += "━━━━━━━━━━━━━━\n"
     text += f"⚽ {title}\n"
     text += f"🏆 {competition}\n"
-    text += f"🕒 {formatted_time}\n\n"
+    text += f"🕒 {date}\n\n"
 
     text += "📊 Match Status\n"
-    text += "Upcoming / Recent Match\n\n"
-
-    text += "📈 Recent Performance\n"
-    text += "Free source မှာ detailed form data မပါသေးပါ\n\n"
+    text += "Upcoming Match\n\n"
 
     text += "🚑 Injury Update\n"
     text += "Official injury data မရသေးပါ\n\n"
 
     text += "👥 Expected Lineup\n"
-    text += "Official lineup မထွက်သေးပါ / Free source မှာ lineup data မပါသေးပါ\n\n"
+    text += "Official lineup မထွက်သေးပါ\n\n"
 
     text += "🧠 Match Analysis\n"
-    text += build_analysis(title) + "\n\n"
+    text += "နှစ်သင်းလုံးအတွက် momentum အရေးကြီးပြီး first goal ရတဲ့ဘက်က game control ပိုရနိုင်ပါတယ်။\n\n"
 
     text += "🎯 Prediction Tip\n"
-    text += build_tip(title) + "\n\n"
+    text += "Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။\n\n"
 
-    text += "⚠️ Note: Betting signal မဟုတ်ပါ။ Free football source အခြေခံပြီး preview ရေးထားတာပါ။\n\n"
+    text += "⚠️ Note: Betting signal မဟုတ်ပါ။ Free source အခြေခံ preview ဖြစ်ပါတယ်။\n\n"
     text += "#Football #MatchPreview"
 
     return text
-
-
-def send_message(text):
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        loop.run_until_complete(
-            bot.send_message(
-                chat_id=CHANNEL_ID,
-                text=text
-            )
-        )
-
-        loop.close()
-
-    except Exception as e:
-        print(f"Telegram send error: {e}", flush=True)
 
 
 def send_posts():
     print("Building football posts...", flush=True)
 
     matches = get_matches()
-    print(f"Matches found: {len(matches)}", flush=True)
+    print(f"Upcoming matches found: {len(matches)}", flush=True)
 
     if not matches:
-        send_message("⚠️ Match data မတွေ့သေးပါ။")
+        send_message("⚠️ Upcoming match data မတွေ့သေးပါ။ ပွဲအဟောင်းတွေကို မပို့အောင် filter လုပ်ထားပါတယ်။")
         return
 
     for match in matches:
-        try:
-            text = build_post(match)
-            send_message(text)
-            print("Post sent", flush=True)
-            time.sleep(2)
-
-        except Exception as e:
-            print(f"Send error: {e}", flush=True)
+        send_message(build_post(match))
+        print("Post sent", flush=True)
+        time.sleep(2)
 
     print("Done", flush=True)
 
