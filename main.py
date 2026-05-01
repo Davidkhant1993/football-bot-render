@@ -275,7 +275,7 @@ def get_upcoming_matches(league_id):
         "fixtures",
         {
             "league": league_id,
-            "season": SEASON,
+            "season": 2025,
             "next": MATCH_LIMIT_PER_LEAGUE,
         },
     )
