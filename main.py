@@ -83,26 +83,39 @@ def get_matches():
 
         matches = data.get("response", [])
 
-        filtered = []
-
-        now = datetime.utcnow()
+        final_matches = []
 
         for match in matches:
-            try:
-                match_time = datetime.fromisoformat(
-                    match["date"].replace("Z", "+00:00")
-                )
 
-                if match_time > now:
-                    filtered.append(match)
+            title = match.get(
+                "title",
+                "Football Match"
+            )
 
-            except:
-                continue
+            competition = match.get(
+                "competition",
+                "Football"
+            )
 
-        return filtered[:MATCH_LIMIT]
+            date = match.get(
+                "date",
+                datetime.now().isoformat()
+            )
+
+            final_matches.append({
+                "title": title,
+                "competition": competition,
+                "date": date
+            })
+
+        return final_matches[:5]
 
     except Exception as e:
-        print(f"Get matches error: {e}", flush=True)
+        print(
+            f"Get matches error: {e}",
+            flush=True
+        )
+
         return []
 
 
