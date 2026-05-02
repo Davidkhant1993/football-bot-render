@@ -6,9 +6,6 @@ from datetime import datetime, timedelta
 from flask import Flask
 
 
-# =========================================================
-# FLASK WEB SERVER FOR RENDER
-# =========================================================
 app = Flask(__name__)
 
 @app.route("/")
@@ -23,43 +20,29 @@ def run_web():
 threading.Thread(target=run_web).start()
 
 
-# =========================================================
-# TELEGRAM SETTINGS
-# =========================================================
 BOT_TOKEN = "8498955364:AAHlm0z49sMNxcQUqIaMOnM9evizJUMnl8A"
 CHANNEL_ID = "@Manchesterunitedfanbased"
 
 SEND_ON_START = True
 DAILY_POST_TIME = "10:00"
-MATCH_LIMIT = 5
+MATCH_LIMIT = 3
 
 
-# =========================================================
-# TELEGRAM SEND
-# =========================================================
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
     try:
         response = requests.post(
             url,
-            data={
-                "chat_id": CHANNEL_ID,
-                "text": text
-            },
+            data={"chat_id": CHANNEL_ID, "text": text},
             timeout=30
         )
-
         print("Telegram status:", response.status_code, flush=True)
-        print("Telegram response:", response.text, flush=True)
 
     except Exception as e:
         print(f"Telegram send error: {e}", flush=True)
 
 
-# =========================================================
-# MYANMAR TIME FORMAT
-# =========================================================
 def mm_time(date_text, time_text):
     try:
         dt = datetime.fromisoformat(f"{date_text}T{time_text}+00:00")
@@ -69,9 +52,44 @@ def mm_time(date_text, time_text):
         return f"{date_text} | {time_text}"
 
 
-# =========================================================
-# FREE MATCH SOURCE + FALLBACK
-# =========================================================
+LEAGUES = {
+    "🏴 Premier League": "4328",
+    "🇪🇸 LaLiga": "4335",
+    "🇩🇪 Bundesliga": "4331",
+}
+
+
+FALLBACK_MATCHES = {
+    "4328": [
+        {
+            "strHomeTeam": "Manchester City",
+            "strAwayTeam": "Arsenal",
+            "dateEvent": "2026-05-02",
+            "strTime": "13:30:00",
+            "strVenue": "Etihad Stadium",
+        }
+    ],
+    "4335": [
+        {
+            "strHomeTeam": "Barcelona",
+            "strAwayTeam": "Real Madrid",
+            "dateEvent": "2026-05-02",
+            "strTime": "14:30:00",
+            "strVenue": "Camp Nou",
+        }
+    ],
+    "4331": [
+        {
+            "strHomeTeam": "Bayern Munich",
+            "strAwayTeam": "Dortmund",
+            "dateEvent": "2026-05-02",
+            "strTime": "12:00:00",
+            "strVenue": "Allianz Arena",
+        }
+    ],
+}
+
+
 def get_matches(league_id):
     try:
         url = "https://www.thesportsdb.com/api/v1/json/1/eventsnextleague.php"
@@ -84,7 +102,6 @@ def get_matches(league_id):
 
         response.raise_for_status()
         data = response.json()
-
         matches = data.get("events")
 
         if matches:
@@ -93,69 +110,22 @@ def get_matches(league_id):
     except Exception as e:
         print(f"SportsDB error: {e}", flush=True)
 
-    return [
-        {
-            "strHomeTeam": "Manchester City",
-            "strAwayTeam": "Arsenal",
-            "dateEvent": "2026-05-02",
-            "strTime": "19:00:00",
-            "strVenue": "Etihad Stadium",
-        },
-        {
-            "strHomeTeam": "Barcelona",
-            "strAwayTeam": "Real Madrid",
-            "dateEvent": "2026-05-02",
-            "strTime": "20:00:00",
-            "strVenue": "Camp Nou",
-        },
-        {
-            "strHomeTeam": "Bayern Munich",
-            "strAwayTeam": "Dortmund",
-            "dateEvent": "2026-05-02",
-            "strTime": "18:30:00",
-            "strVenue": "Allianz Arena",
-        },
-    ]
+    return FALLBACK_MATCHES.get(league_id, [])
 
 
-# =========================================================
-# LEAGUES
-# =========================================================
-LEAGUES = {
-    "🏴 Premier League": "4328",
-    "🇪🇸 LaLiga": "4335",
-    "🇩🇪 Bundesliga": "4331",
-}
-
-
-# =========================================================
-# ANALYSIS
-# =========================================================
 def build_analysis(home, away):
     teams = f"{home} {away}".lower()
 
-    if "manchester" in teams or "arsenal" in teams:
-        return (
-            "ဒီပွဲမှာ attacking transition နဲ့ midfield control "
-            "က အရေးကြီးနိုင်ပြီး first goal ရတဲ့ဘက်က momentum ပိုရနိုင်ပါတယ်။"
-        )
+    if "manchester city" in teams or "arsenal" in teams:
+        return "Premier League big match ဖြစ်ပြီး midfield control နဲ့ pressing intensity က အဓိကဖြစ်နိုင်ပါတယ်။"
 
     if "barcelona" in teams or "real madrid" in teams:
-        return (
-            "El Clasico type big match ဖြစ်နိုင်ပြီး possession control "
-            "နဲ့ counter attack timing က result ကိုဆုံးဖြတ်နိုင်ပါတယ်။"
-        )
+        return "LaLiga big match ဖြစ်ပြီး possession control နဲ့ counter attack timing က result ကိုဆုံးဖြတ်နိုင်ပါတယ်။"
 
     if "bayern" in teams or "dortmund" in teams:
-        return (
-            "Bundesliga big match ဖြစ်နိုင်ပြီး high pressing နဲ့ pace transition "
-            "တွေက ပွဲကိုအဆုံးအဖြတ်ပေးနိုင်ပါတယ်။"
-        )
+        return "Bundesliga big match ဖြစ်ပြီး high pressing နဲ့ pace transition တွေက ပွဲကိုအဆုံးအဖြတ်ပေးနိုင်ပါတယ်။"
 
-    return (
-        "နှစ်သင်းလုံးအတွက် momentum အရေးကြီးပြီး "
-        "defensive concentration က result ကိုသတ်မှတ်နိုင်ပါတယ်။"
-    )
+    return "နှစ်သင်းလုံးအတွက် momentum အရေးကြီးပြီး first goal ရတဲ့ဘက်က game control ပိုရနိုင်ပါတယ်။"
 
 
 def build_tip(home, away):
@@ -167,9 +137,6 @@ def build_tip(home, away):
     return "Over 1.5 Goals angle စဉ်းစားလို့ရပါတယ်။"
 
 
-# =========================================================
-# BUILD POST
-# =========================================================
 def build_post(match, league_name):
     home = match.get("strHomeTeam", "Home Team")
     away = match.get("strAwayTeam", "Away Team")
@@ -206,9 +173,6 @@ def build_post(match, league_name):
     return text
 
 
-# =========================================================
-# SEND POSTS
-# =========================================================
 def send_posts():
     print("Building football posts...", flush=True)
 
@@ -231,9 +195,6 @@ def send_posts():
     print("Done", flush=True)
 
 
-# =========================================================
-# RUN
-# =========================================================
 if SEND_ON_START:
     send_posts()
 
