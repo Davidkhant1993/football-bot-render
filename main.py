@@ -2,30 +2,20 @@ import time
 import threading
 import requests
 import schedule
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from flask import Flask
 
-
-# =========================================================
-# FLASK WEB SERVER
-# =========================================================
 app = Flask(__name__)
 
 @app.route("/")
 def home():
     return "Football Bot Running"
 
-
 def run_web():
     app.run(host="0.0.0.0", port=10000)
 
-
 threading.Thread(target=run_web).start()
 
-
-# =========================================================
-# TELEGRAM SETTINGS
-# =========================================================
 BOT_TOKEN = "8498955364:AAHlm0z49sMNxcQUqIaMOnM9evizJUMnl8A"
 CHANNEL_ID = "@Manchesterunitedfanbased"
 
@@ -33,196 +23,54 @@ SEND_ON_START = True
 DAILY_POST_TIME = "10:00"
 MATCH_LIMIT = 5
 
+LEAGUES = {
+    "🏴 Premier League": "4328",
+    "🇪🇸 LaLiga": "4335",
+    "🇩🇪 Bundesliga": "4331",
+    "🇮🇹 Serie A": "4332",
+    "🇫🇷 Ligue 1": "4334",
+    "🇪🇺 Champions League": "4480",
+}
 
-# =========================================================
-# SEND TELEGRAM MESSAGE
-# =========================================================
 def send_message(text):
-
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    r = requests.post(url, data={"chat_id": CHANNEL_ID, "text": text}, timeout=30)
+    print("Telegram:", r.status_code, r.text, flush=True)
 
+def mm_time(date_text, time_text):
     try:
-        response = requests.post(
-            url,
-            data={
-                "chat_id": CHANNEL_ID,
-                "text": text
-            },
-            timeout=30
-        )
-
-        print(
-            "Telegram status:",
-            response.status_code,
-            flush=True
-        )
-
-        print(
-            "Telegram response:",
-            response.text,
-            flush=True
-        )
-
-    except Exception as e:
-
-        print(
-            f"Telegram send error: {e}",
-            flush=True
-        )
-
-
-# =========================================================
-# FORMAT TIME
-# =========================================================
-def format_time(date_str):
-
-    try:
-        dt = datetime.fromisoformat(
-            date_str.replace("Z", "+00:00")
-        )
-
-        mm_time = dt + timedelta(
-            hours=6,
-            minutes=30
-        )
-
-        return mm_time.strftime(
-            "%d %b %Y | %I:%M %p (MM Time)"
-        )
-
+        dt = datetime.fromisoformat(f"{date_text}T{time_text}+00:00")
+        dt = dt + timedelta(hours=6, minutes=30)
+        return dt.strftime("%d %b %Y | %I:%M %p (MM Time)")
     except:
-        return date_str
+        return f"{date_text} | {time_text}"
 
+def get_matches(league_id):
+    url = "https://www.thesportsdb.com/api/v1/json/1/eventsnextleague.php"
+    r = requests.get(url, params={"id": league_id}, timeout=30)
+    r.raise_for_status()
+    data = r.json()
+    return data.get("events") or []
 
-# =========================================================
-# GET MATCHES
-# =========================================================
-def get_matches():
+def build_post(match, league_name):
+    home = match.get("strHomeTeam", "Home Team")
+    away = match.get("strAwayTeam", "Away Team")
+    date = match.get("dateEvent", "Unknown Date")
+    time_utc = match.get("strTime", "00:00:00")
+    venue = match.get("strVenue") or "Venue မသိရသေး"
 
-    try:
-
-        url = "https://www.scorebat.com/video-api/v3/"
-
-        response = requests.get(
-            url,
-            timeout=30
-        )
-
-        response.raise_for_status()
-
-        data = response.json()
-
-        matches = data.get(
-            "response",
-            []
-        )
-
-        final_matches = []
-
-        now = datetime.now(timezone.utc)
-
-        for match in matches:
-
-            title = match.get(
-                "title",
-                "Football Match"
-            )
-
-            competition = match.get(
-                "competition",
-                "Football"
-            )
-
-            date = match.get(
-                "date",
-                ""
-            )
-
-            try:
-
-                match_time = datetime.fromisoformat(
-                    date.replace("Z", "+00:00")
-                )
-
-            except:
-                continue
-
-            # Skip old matches
-            if match_time <= now:
-                continue
-
-            final_matches.append({
-                "title": title,
-                "competition": competition,
-                "date": date
-            })
-
-        return final_matches[:MATCH_LIMIT]
-
-    except Exception as e:
-
-        print(
-            f"Get matches error: {e}",
-            flush=True
-        )
-
-        return []
-
-
-# =========================================================
-# CLEAN COMPETITION
-# =========================================================
-def clean_competition(comp):
-
-    if isinstance(comp, dict):
-        return comp.get(
-            "name",
-            "Football"
-        )
-
-    return str(comp)
-
-
-# =========================================================
-# BUILD POST
-# =========================================================
-def build_post(match):
-
-    title = match.get(
-        "title",
-        "Football Match"
-    )
-
-    competition = clean_competition(
-        match.get(
-            "competition",
-            "Football"
-        )
-    )
-
-    date = format_time(
-        match.get(
-            "date",
-            "Unknown Time"
-        )
-    )
+    title = f"{home} vs {away}"
 
     text = ""
-
     text += "🔥 MATCH PREVIEW\n"
     text += "━━━━━━━━━━━━━━\n"
-
     text += f"⚽ {title}\n"
-
-    text += f"🏆 {competition}\n"
-
-    text += f"🕒 {date}\n\n"
+    text += f"🏆 {league_name}\n"
+    text += f"🕒 {mm_time(date, time_utc)}\n"
+    text += f"🏟️ {venue}\n\n"
 
     text += "📊 Match Status\n"
     text += "Upcoming Match\n\n"
-
-    text += "📈 Recent Performance\n"
-    text += "Free source မှာ detailed form data မပါသေးပါ\n\n"
 
     text += "🚑 Injury Update\n"
     text += "Official injury data မရသေးပါ\n\n"
@@ -231,106 +79,46 @@ def build_post(match):
     text += "Official lineup မထွက်သေးပါ\n\n"
 
     text += "🧠 Match Analysis\n"
-    text += (
-        "နှစ်သင်းလုံးအတွက် momentum "
-        "အရေးကြီးပြီး first goal "
-        "ရတဲ့ဘက်က game control "
-        "ပိုရနိုင်ပါတယ်။\n\n"
-    )
+    text += "နှစ်သင်းလုံးအတွက် momentum အရေးကြီးပြီး first goal ရတဲ့ဘက်က game control ပိုရနိုင်ပါတယ်။\n\n"
 
     text += "🎯 Prediction Tip\n"
-    text += (
-        "Over 1.5 Goals angle "
-        "စဉ်းစားလို့ရပါတယ်။\n\n"
-    )
+    text += "Over 1.5 Goals angle = စုစုပေါင်း goal ၂ လုံးနှင့်အထက် ဝင်နိုင်ခြေကို ဆိုလိုပါတယ်။\n\n"
 
-    text += (
-        "⚠️ Note: Betting signal "
-        "မဟုတ်ပါ။ Free source "
-        "အခြေခံ preview ဖြစ်ပါတယ်။\n\n"
-    )
-
+    text += "⚠️ Note: Betting signal မဟုတ်ပါ။ Free data source အခြေခံ preview ဖြစ်ပါတယ်။\n\n"
     text += "#Football #MatchPreview"
 
     return text
 
-
-# =========================================================
-# SEND POSTS
-# =========================================================
 def send_posts():
+    print("Building football posts...", flush=True)
+    total = 0
 
-    print(
-        "Building football posts...",
-        flush=True
-    )
-
-    matches = get_matches()
-
-    print(
-        f"Upcoming matches found: {len(matches)}",
-        flush=True
-    )
-
-    if not matches:
-
-        send_message(
-            "⚠️ Upcoming match data "
-            "မတွေ့သေးပါ။"
-        )
-
-        return
-
-    for match in matches:
-
+    for league_name, league_id in LEAGUES.items():
         try:
+            matches = get_matches(league_id)
+            print(f"{league_name}: {len(matches)} matches found", flush=True)
 
-            text = build_post(match)
-
-            send_message(text)
-
-            print(
-                "Post sent",
-                flush=True
-            )
-
-            time.sleep(2)
+            for match in matches[:MATCH_LIMIT]:
+                send_message(build_post(match, league_name))
+                total += 1
+                print("Post sent", flush=True)
+                time.sleep(2)
 
         except Exception as e:
+            print(f"{league_name} error: {e}", flush=True)
 
-            print(
-                f"Send error: {e}",
-                flush=True
-            )
+    if total == 0:
+        send_message("⚠️ Upcoming match data မတွေ့သေးပါ။")
 
     print("Done", flush=True)
 
-
-# =========================================================
-# RUN
-# =========================================================
 if SEND_ON_START:
-
-    send_message(
-        "✅ Bot is running now"
-    )
-
     send_posts()
 
+schedule.every().day.at(DAILY_POST_TIME).do(send_posts)
 
-schedule.every().day.at(
-    DAILY_POST_TIME
-).do(send_posts)
-
-
-print(
-    "Football Bot Running...",
-    flush=True
-)
-
+print("Football Bot Running...", flush=True)
 
 while True:
-
     schedule.run_pending()
-
     time.sleep(1)
